@@ -81,7 +81,7 @@ static void close_socket(native_socket sockfd)
 	{
 #if FCWT_USE_WINSOCK
 		closesocket(sockfd);
-#elif FCWT_USE_WINSOCK
+#elif FCWT_USE_BSD_SOCKETS
 		close(sockfd);
 #endif
 	}
@@ -174,7 +174,7 @@ sock connect_to_camera(int port) {
 
   log(LOG_ERROR, "Failed to connect");
   close_socket(sockfd);
-  
+
   return 0;
 }
 
@@ -191,6 +191,7 @@ static uint32_t from_fuji_size_prefix(uint32_t sizeBytes) {
 void send_data(native_socket sockfd, void const* data, size_t sizeBytes) {
   bool retry = false;
   do {
+  retry = false;
 #if FCWT_USE_BSD_SOCKETS
 	ssize_t const result = write(sockfd, data, sizeBytes);
 #elif FCWT_USE_WINSOCK
@@ -212,8 +213,8 @@ void receive_data(native_socket sockfd, void* data, size_t sizeBytes) {
 #elif FCWT_USE_WINSOCK
 	int const result = recv(sockfd, static_cast<char*>(data), static_cast<int>(sizeBytes), 0);
 #endif
-    if (result < 0) {
-      if (errno != EINTR) fatal_error("Failed to read data from socket\n");
+    if (result < 0 && errno != EINTR) {
+      fatal_error("Failed to read data from socket\n");
     } else {
       sizeBytes -= result;
       data = static_cast<char*>(data) + result;
